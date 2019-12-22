@@ -6,6 +6,7 @@ import requests
 import PyPDF2
 from pathlib import Path
 
+
 class ERScraper:
 
     def _retrieve_pdf(self, press_release_url):
@@ -23,7 +24,7 @@ class ERScraper:
 
         # Get the html for the ER press release to scrape the location of the pdf file
         # TODO validate type of press release and number of references.
-        html = urlopen(Request(url, headers={'User-Agent':'Mozilla/5.0'}), context=ssl.SSLContext())
+        html = urlopen(Request(url, headers={'User-Agent': 'Mozilla/5.0'}), context=ssl.SSLContext())
         soup = bs(html, 'html.parser')
 
         # Find the word "liitteet" and pick the next element i.e the actual reference
@@ -34,13 +35,13 @@ class ERScraper:
         root = Path('..')
 
         # Save the pdf to file
-        with open(root/'tmp'/'.tmp.pdf', 'wb') as f:
+        with open(root / 'tmp' / '.tmp.pdf', 'wb') as f:
             f.write(pdf_file.content)
 
         # Returns true on successful download
         return True
 
-    def _read_pdf(self, file_path):
+    def _find_earnings_page(self, file_path):
         """
         Opens a pdf file based on the file_path parameter returns a table containing reported revenue, operating profit,
         pretax profit and profit per share
@@ -49,16 +50,19 @@ class ERScraper:
         """
         f = open(file_path, 'rb')
         file_reader = PyPDF2.PdfFileReader(f)
-        #TODO taulukon tunnistamiseen jokin järkevä tapa
+
+        # TODO Find a way to recognise the correct page
         for i in range(file_reader.getNumPages()):
-            if "toimitusjohtaja" in file_reader.getPage(i).extractText().lower():
-                return file_reader.getPage(i).extractText()
-        else:
-            return ''
+            if self._validate(file_reader.getPage(i).extractText()):
+                return i
+
+    def _validate(self, input_string, mode='dumb'):
+        # TODO return True if the earnings table is present
+        return True
 
 
 if __name__ == '__main__':
     scraper = ERScraper()
-    scraper._retrieve_pdf(sys.argv[1])
+    # scraper._retrieve_pdf(sys.argv[1])
     pdf_path = Path('..') / 'tmp' / '.tmp.pdf'
-    print(scraper._read_pdf(pdf_path))
+    print(scraper._find_earnings_page(pdf_path))
