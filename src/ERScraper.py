@@ -5,7 +5,7 @@ from urllib.request import urlopen, Request
 import requests
 import PyPDF2
 from pathlib import Path
-
+from sklearn.feature_extraction.text import CountVectorizer
 
 class ERScraper:
 
@@ -50,15 +50,12 @@ class ERScraper:
         """
         f = open(file_path, 'rb')
         file_reader = PyPDF2.PdfFileReader(f)
-
+        c_vect = CountVectorizer()
         # TODO Find a way to recognise the correct page
         for i in range(file_reader.getNumPages()):
             if self._validate(file_reader.getPage(i).extractText()):
                 return i
 
-    def _validate(self, input_string, mode='dumb'):
-        # TODO return True if the earnings table is present
-        return True
 
 
 if __name__ == '__main__':
