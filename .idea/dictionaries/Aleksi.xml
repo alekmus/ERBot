@@ -5,7 +5,9 @@
       <w>liitteet</w>
       <w>modelbuilder</w>
       <w>pdftotext</w>
+      <w>tokenizes</w>
       <w>tuloslaskelma</w>
+      <w>vect</w>
     </words>
   </dictionary>
 </component>
