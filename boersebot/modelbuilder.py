@@ -21,7 +21,7 @@ def tokenize_string(input_string):
     stemmer = nltk.stem.snowball.SnowballStemmer('finnish')
 
     # Stem and collect the actual words (excluding numbers and special characters) that are not stopwords
-    return [stemmer.stem(word) for word in words if (word not in stopwords) and word.isalpha()]
+    return [stemmer.stem(word) for word in words if (word not in stopwords) and not word.isdigit()]
 
 
 def tokenize_samples(samples_location):
@@ -55,6 +55,6 @@ def build_dictionary(samples_location):
 
 if __name__ == '__main__':
     with open('assets/count_vectorizer.pkl', 'rb') as f:
-        cv = pickle.load(f, )
+        cv = pickle.load(f)
 
     print(cv.get_feature_names())
