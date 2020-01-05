@@ -2,6 +2,7 @@ from boersebot import pdf_reader
 import nltk
 from sklearn.feature_extraction.text import CountVectorizer
 import os
+import pickle
 
 
 def tokenize_string(input_string):
@@ -40,6 +41,20 @@ def tokenize_samples(samples_location):
             if file.name != "labels.csv"]
 
 
+def build_dictionary(samples_location):
+    """
+    Builds a dictionary for the naive bayes classifier
+    :param samples_location: Directory location of samples the dictionary will be based on.
+    :return: Sklearn CountVectorizer that is fitted to samples' token space.
+    """
+    tokens = tokenize_samples(samples_location)
+    count_vectorizer = CountVectorizer()
+    count_vectorizer.fit(tokens)
+    return count_vectorizer
+
+
 if __name__ == '__main__':
-    cv = CountVectorizer()
-    print(cv.fit_transform(tokenize_samples("samples")).toarray())
+    with open('assets/count_vectorizer.pkl', 'rb') as f:
+        cv = pickle.load(f, )
+
+    print(cv.get_feature_names())

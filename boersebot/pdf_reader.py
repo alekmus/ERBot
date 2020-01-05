@@ -42,14 +42,16 @@ def pdf_to_string(file_path):
                             stderr=subprocess.PIPE).communicate()[0]
 
 
-def pdf_string_to_pages(pdf_string):
+def pdf_to_pages(pdf_string):
     """
-    Breaks a pdf that has been converted to text into a list containing strings of each page
-    :param pdf_string:
-    :return:
+    Splits a string on feedforward character and excludes the last split.
+    :param pdf_string: String representation of a pdf file.
+    :return: List of strings
     """
-    # TODO documentation and pretty much everything else
+    return pdf_string.split('\f')[:-1]
 
 
 if __name__ == '__main__':
-    print(pdf_to_string("samples/0.pdf"))
+    sample = (pdf_to_string("samples/0.pdf"))
+    pages = pdf_to_pages(sample)
+    print(pages[-1])
