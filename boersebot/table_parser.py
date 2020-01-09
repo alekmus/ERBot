@@ -1,5 +1,4 @@
 from boersebot import pdf_reader
-import string
 import re
 
 
