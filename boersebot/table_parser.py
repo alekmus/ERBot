@@ -1,5 +1,7 @@
 from boersebot import pdf_reader
+from collections import defaultdict
 import re
+import pandas as pd
 
 
 def parse_figures(input_string):
@@ -24,24 +26,88 @@ def parse_figures(input_string):
                 'tulos/osake, euroa': 'profit_per_share'
                 }
 
-    for line in input_string.split('\n'):
-        pattern = r"^((?:\S+\s?)+)(.*)"
-        ind = re.match(pattern, line.lower())
-
-        if ind:
-            key = ind.group(1).strip()
-            print(key)
-            if key in synonyms:
-                fig_key = synonyms[key]
-                figs[fig_key] = ind.group(2).split()
     return figs
 
 
-def check_line_for_units(line):
-    pass
+def lines_to_index_rows(input_string):
+    """
+    Creates a sparse matrix that has name of each figure as well as the index for start and end of each value cell.
+    :param input_string: A String of a table to be converted.
+    :return: A dictionary in the format key: (start_index, end_index, value).
+    """
+    # Matches a string that starts with words followed by at least two spaces.
+    title_pattern = r"^((?:\S\s?)+)(?:  )+"
+    lines = input_string.split('\n')
+    rows = defaultdict(list)
+    for line in lines:
+        # Recognise table lines by matching the with pattern
+        ind = re.match(title_pattern, line)
+        if ind:
+            key = ind.group(1)
+            # Find the digits on the line
+            for i in re.finditer(r"([\-\d][\d,]+)", line):
+                rows[key].append((i.start(),
+                                  i.end(),
+                                  i.group().strip()))
+    return rows
+
+
+def rebuild_table(input_string):
+    """
+    Rebuilds the string data to a pandas DataFrame
+    :param input_string: String of representation of a table
+    :return: Pandas DataFrame containing the data from the string.
+    """
+    # TODO need to look up the column headers. Use column indexes to peek above the current table. Add functionality
+    # to get the first table row index
+    rows = []
+    row_dict = lines_to_index_rows(input_string)
+    columns = fetch_column_idx(row_dict)
+
+    for key in row_dict:
+        row = [key]
+        digits = iter(row_dict[key])
+        digit = next(digits)
+
+        for c in columns:
+            if digit:
+                if digit[0] >= c[0] and digit[1] <= c[1]:
+                    row.append(digit[2])
+                    digit = next(digits, False)
+                else:
+                    row.append(None)
+            else:
+                row.append(None)
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def fetch_column_idx(row_dict):
+    """
+    Helper function for rebuild_table that recreates the column indices based on indices for values.
+    Input can be created by lines_to_index_rows function.
+    :param row_dict: A dictionary of start and end indices of table values.
+    :return: A list of indices that form columns in a table.
+    """
+    start_idx = defaultdict(list)
+    end_idx = defaultdict(list)
+
+    for key, values in row_dict.items():
+        for i, value in enumerate(values):
+            start_idx[i].append(value[0])
+            end_idx[i].append(value[1])
+
+    column_idx = []
+
+    # Iterate over list of keys instead of dictionary for keeping order. Both idx dictionaries can be assumed to have
+    # the same number of indices.
+    for i in sorted(start_idx.keys()):
+        column_idx.append((min(start_idx[i]), min(end_idx[i])))
+
+    return column_idx
 
 
 if __name__ == '__main__':
     sample = pdf_reader.pdf_page_to_string('samples/2.pdf', 23)
-    print(parse_figures(sample))
-    print(sample)
+    print(rebuild_table(sample))
+
