@@ -39,17 +39,23 @@ def lines_to_index_rows(input_string):
     title_pattern = r"^((?:\S\s?)+)(?:  )+"
     lines = input_string.split('\n')
     rows = defaultdict(list)
-    for line in lines:
+
+    # Line for first tablelike match
+    table_start = None
+
+    for j, line in enumerate(lines):
         # Recognise table lines by matching the with pattern
         ind = re.match(title_pattern, line)
         if ind:
+            if table_start is None:
+                table_start = j
             key = ind.group(1)
             # Find the digits on the line
             for i in re.finditer(r"([\-\d][\d,]+)", line):
                 rows[key].append((i.start(),
                                   i.end(),
                                   i.group().strip()))
-    return rows
+    return rows, table_start
 
 
 def rebuild_table(input_string):
@@ -61,15 +67,16 @@ def rebuild_table(input_string):
     # TODO need to look up the column headers. Use column indexes to peek above the current table. Add functionality
     # to get the first table row index
     rows = []
-    row_dict = lines_to_index_rows(input_string)
-    columns = fetch_column_idx(row_dict)
+    row_dict, table_start = lines_to_index_rows(input_string)
+    column_idx = fetch_column_idx(row_dict)
+    column_names = fetch_column_names(input_string, column_idx, table_start)
 
     for key in row_dict:
         row = [key]
         digits = iter(row_dict[key])
         digit = next(digits)
 
-        for c in columns:
+        for c in column_idx:
             if digit:
                 if digit[0] >= c[0] and digit[1] <= c[1]:
                     row.append(digit[2])
@@ -79,7 +86,32 @@ def rebuild_table(input_string):
             else:
                 row.append(None)
         rows.append(row)
-    return pd.DataFrame(rows)
+    print(column_names)
+    return pd.DataFrame(rows, columns=column_names).set_index('tunnus')
+
+
+def fetch_column_names(input_string, column_index, table_start):
+    """
+    Tries to parse column names for given columns. Function gives placeholder names for columns that can be parsed to
+    generic names.
+    :param input_string: String representation of table.
+    :param column_index: List of column indexes
+    :param table_start: Line where the table starts.
+    :return:
+    """
+    col_names = [""]*len(column_index)
+
+    for i, line in enumerate(input_string.split('\n')):
+        prev = 0
+        if i >= table_start:
+            break
+        else:
+            for j, c in enumerate(column_index):
+                col_names[j] = " ".join([col_names[j], line[prev:c[1]+1].strip()])
+                prev = c[1] + 1
+    # Set the index name to 'tunnus'
+    col_names.insert(0, 'tunnus')
+    return col_names
 
 
 def fetch_column_idx(row_dict):
@@ -109,5 +141,6 @@ def fetch_column_idx(row_dict):
 
 if __name__ == '__main__':
     sample = pdf_reader.pdf_page_to_string('samples/2.pdf', 23)
+
     print(rebuild_table(sample))
 
