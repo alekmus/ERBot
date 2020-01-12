@@ -117,7 +117,16 @@ if __name__ == '__main__':
 
     with open('assets/naive_bayes_clf.pkl', 'rb') as f:
         model = pickle.load(f)
-    pdf = pdf_reader.pdf_page_to_string('samples/1.pdf', 14)
-    pdf = " ".join(tokenize_string(pdf))
-    trans = cv.transform([pdf])
-    print(model.predict(cv.transform([pdf])))
+    labels = open("samples/labels.csv").readlines()
+    corr = 0
+    for file in os.scandir("samples"):
+        if file.name != 'labels.csv':
+            for i, page in enumerate(pdf_reader.pdf_to_pages(pdf_reader.pdf_to_string(file.path))):
+
+                pdf = " ".join(tokenize_string(page))
+                trans = cv.transform([pdf])
+                if model.predict(cv.transform([pdf])) == 1.0:
+                    if int(labels[int(Path(file.path).stem)]) == i+1:
+                        corr += 1
+
+    print("This works with {} accuracy".format(corr/len(labels)))
