@@ -65,25 +65,37 @@ def rebuild_table(input_string):
             else:
                 row.append(None)
         rows.append(row)
+    mag_unit = fetch_units(input_string, table_start)
+    return pd.DataFrame(rows, columns=column_names).set_index('tunnus'), mag_unit
 
-    return pd.DataFrame(rows, columns=column_names).set_index('tunnus')
 
-
-def fetch_units(input_string):
+def fetch_units(input_string, table_start):
     """
     Parses the monetary units from the input string
-    :param lower_input: A String representing a table
-    :return: A tuple in the form (magnitude, currency) i.e (k, EUR)
+    :param input_string: A String representing a table
+    :param table_start: Integer, line number for first table row.
+    :return: A tuple in the form (magnitude, currency) i.e (1000, EUR)
     """
-    with open("assets/unit_patterns.json") as f:
-        patterns = json.load(f)
-
-    lower_input = input_string.lower()
-    for pattern in patterns:
-        print(pattern)
-        re.search(pattern, lower_input)
+    lines = input_string.lower().split('\n')
+    pattern = r"((?:[\d ,])*) ?([m ]?)(?P<tunnus>eur|sek)\s|\s(?P<jtunnus>me)\s"
+    for i, line in enumerate(lines):
+        if i >= table_start:
+            return 1, 'EUR'
+        else:
+            ind = re.search(pattern, line)
+            if ind:
+                if ind.group('tunnus'):
+                    if ind.group(2) == 'm':
+                        return int(1e6), ind.group('tunnus')
+                    elif ind.group(1):
+                        mag = ind.group(1)
+                        return int(re.sub(r'[^\d]', '', mag)), ind.group('tunnus')
+                    else:
+                        return 1, ind.group('tunnus')
+                elif ind.group('jtunnus'):
+                    return int(1e6), 'EUR'
     else:
-        return None
+        return 1, 'EUR'
 
 
 def fetch_column_names(input_string, column_index, table_start):
@@ -177,6 +189,5 @@ def fetch_column_idx(row_dict):
 
 
 if __name__ == '__main__':
-    sample = pdf_reader.pdf_page_to_string('samples/2.pdf', 23)
-    # print(rebuild_table(sample))
-    fetch_units("")
+    sample = pdf_reader.pdf_page_to_string('samples/12.pdf', 5)
+    print(rebuild_table(sample))
