@@ -8,7 +8,6 @@ from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 
 class ERScraper:
-
     def _retrieve_pdf(self, press_release_url):
         """
         Retrieves a link to the earnings release pdf file from the press release.

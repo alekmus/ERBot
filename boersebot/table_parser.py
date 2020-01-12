@@ -1,32 +1,9 @@
 from boersebot import pdf_reader
 from collections import defaultdict
+import json
 import re
+import datetime
 import pandas as pd
-
-
-def parse_figures(input_string):
-    """
-    Parses the relevant figures from an input string representing a earnings release table.
-    :param input_string: A string that resembles a table.
-    :return: A dictionary that contains keys: 'revenue', 'profit', 'pretax_profit', 'profit_per_share', 'units'
-    and 'timeframe'. Most values are lists in the format: [Name of figure, figure1, figure2, etc].
-    Units and timeframe only contains a list with a single value.
-    """
-    figs = dict.fromkeys(['revenue', 'profit', 'pretax_profit', 'profit_per_share', 'units', 'timeframe'])
-    synonyms = {'liikevaihto': 'revenue',
-                'liiketulos': 'profit',
-                'liikevoitto': 'profit',
-                'liiketappio': 'profit',
-                'tappio': 'profit',
-                'voitto': 'profit',
-                'tulos ennen veroja': 'pretax_profit',
-                'voitto ennen veroja': 'pretax_profit',
-                'tappio ennen veroja': 'pretax_profit',
-                'osakekohtainen tulos': 'profit_per_share',
-                'tulos/osake, euroa': 'profit_per_share'
-                }
-
-    return figs
 
 
 def lines_to_index_rows(input_string):
@@ -43,15 +20,19 @@ def lines_to_index_rows(input_string):
     # Line for first tablelike match
     table_start = None
 
+    # Get index_map for generalizing names of rows
+    with open("assets/generalized_index_map.json") as f:
+        index_map = json.load(f)
+
     for j, line in enumerate(lines):
         # Recognise table lines by matching the with pattern
         ind = re.match(title_pattern, line)
         if ind:
             if table_start is None:
                 table_start = j
-            key = ind.group(1)
+            key = generalize_index(ind.group(1).lower().strip(), index_map)
             # Find the digits on the line
-            for i in re.finditer(r"([\-\d][\d,]+)", line):
+            for i in re.finditer(r"([\-\d\(][\d,]+)", line):
                 rows[key].append((i.start(),
                                   i.end(),
                                   i.group().strip()))
@@ -64,13 +45,11 @@ def rebuild_table(input_string):
     :param input_string: String of representation of a table
     :return: Pandas DataFrame containing the data from the string.
     """
-    # TODO need to look up the column headers. Use column indexes to peek above the current table. Add functionality
-    # to get the first table row index
     rows = []
     row_dict, table_start = lines_to_index_rows(input_string)
     column_idx = fetch_column_idx(row_dict)
     column_names = fetch_column_names(input_string, column_idx, table_start)
-
+    column_names = generalize_column_names(column_names)
     for key in row_dict:
         row = [key]
         digits = iter(row_dict[key])
@@ -86,8 +65,25 @@ def rebuild_table(input_string):
             else:
                 row.append(None)
         rows.append(row)
-    print(column_names)
+
     return pd.DataFrame(rows, columns=column_names).set_index('tunnus')
+
+
+def fetch_units(input_string):
+    """
+    Parses the monetary units from the input string
+    :param lower_input: A String representing a table
+    :return: A tuple in the form (magnitude, currency) i.e (k, EUR)
+    """
+    with open("assets/unit_patterns.json") as f:
+        patterns = json.load(f)
+
+    lower_input = input_string.lower()
+    for pattern in patterns:
+        print(pattern)
+        re.search(pattern, lower_input)
+    else:
+        return None
 
 
 def fetch_column_names(input_string, column_index, table_start):
@@ -112,6 +108,47 @@ def fetch_column_names(input_string, column_index, table_start):
     # Set the index name to 'tunnus'
     col_names.insert(0, 'tunnus')
     return col_names
+
+
+def generalize_column_names(column_names):
+    """
+    Replaces parsed column names with generalized versions so they can be looked up later
+    :param column_names: List of parsed column names.
+    :return: List of generalized column names in the
+    set {q1,q2,q3,q4}.
+    """
+    # TODO add h1, h2 and full year earnings.
+    gen_names = []
+    last_year = str(datetime.date.today().year-1)
+    # Loads json file containing regex patterns for each generalized name
+    with open("assets/generalized_column_map.json") as f:
+        name_map = json.load(f)
+    for name in column_names:
+        for key in name_map:
+            if re.search(name_map[key], name):
+                if last_year in name or last_year[-2:] in name:
+                    gen_names.append('prev_' + key)
+                else:
+                    gen_names.append(key)
+                break
+        else:
+            gen_names.append(name)
+
+    return gen_names
+
+
+def generalize_index(name, index_map):
+    """
+    Generalizes name of  the figure so it can be effectively used as an index in the DataFrame. Takes only into account
+    names we are interested in as specified in the generalized_index_map asset file.
+    :param name: Parsed name for figure.
+    :param index_map: Map from different parsed values to generalized ones.
+    :return: List of generalized names of the same length.
+    """
+    if name in index_map:
+        return index_map[name]
+    else:
+        return name
 
 
 def fetch_column_idx(row_dict):
@@ -141,6 +178,5 @@ def fetch_column_idx(row_dict):
 
 if __name__ == '__main__':
     sample = pdf_reader.pdf_page_to_string('samples/2.pdf', 23)
-
-    print(rebuild_table(sample))
-
+    # print(rebuild_table(sample))
+    fetch_units("")

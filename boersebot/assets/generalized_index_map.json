@@ -1,0 +1,13 @@
+{
+"liikevaihto": "liikevaihto",
+"liiketulos": "liiketulos",
+"liikevoitto": "liiketulos",
+"liiketappio": "liiketulos",
+"tappio": "liiketulos",
+"voitto": "liiketulos",
+"tulos ennen veroja": "tulos_ennen_veroja",
+"voitto ennen veroja": "tulos_ennen_veroja",
+"tappio ennen veroja": "tulos_ennen_veroja",
+"osakekohtainen tulos": "osakekohtainen_tulos",
+"tulos/osake, euroa": "osakekohtainen_tulos"
+}
